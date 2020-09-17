@@ -184,13 +184,28 @@ class DynamicFormWidget extends \yii\base\Widget
         $document->appendChild($document->importNode($results->first()->getNode(0), true));
         $this->_options['template'] = trim($document->saveHTML());
 
-        if (isset($this->_options['min']) && $this->_options['min'] === 0 && $this->model->isNewRecord) {
-            $content = $this->removeItems($content);
-        }
+        /*
+         * The package assumes that the model is an ActiveRecord, and thus it will not work with Model classes.
+         * Removing the following lines will resolve the problem, as Model->isNewRecord does not exist. But in order
+         * the widget to work will always require at least one object (even if it is empty).
+         */
+//        if (isset($this->_options['min']) && $this->_options['min'] === 0 && $this->model->isNewRecord) {
+//            $content = $this->removeItems($content);
+//        }
 
         $this->registerAssets();
         echo Html::tag('div', $content, ['class' => $this->widgetContainer, 'data-dynamicform' => $this->_hashVar]);
     }
+
+    /**
+     * The function deletes the item(s) from the widget body.
+     * The function is now not used, as it was only called when there was a new record, and it may removed entirely
+     * in the future
+     *
+     * @param $content string
+     *
+     * @return string
+     */
 
     private function removeItems($content)
     {
@@ -198,10 +213,11 @@ class DynamicFormWidget extends \yii\base\Widget
         $crawler = new Crawler();
         $crawler->addHTMLContent($content, \Yii::$app->charset);
         $root = $document->appendChild($document->createElement('_root'));
-        $crawler->rewind();
-        $root->appendChild($document->importNode($crawler->current(), true));
+        $crawler->getIterator()->rewind();
+        $root->appendChild($document->importNode($crawler->getIterator()->current(), true));
         $domxpath = new \DOMXPath($document);
-        $crawlerInverse = $domxpath->query(CssSelector::toXPath($this->widgetItem));
+        $css_selector = new CssSelectorConverter();
+        $crawlerInverse = $domxpath->query($css_selector->toXPath($this->widgetItem));
 
         foreach ($crawlerInverse as $elementToRemove) {
             $parent = $elementToRemove->parentNode;
